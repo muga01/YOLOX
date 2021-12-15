@@ -7,6 +7,9 @@ import os
 import time
 from loguru import logger
 
+# Added json import for the detected image info retrieval
+import json
+
 import cv2
 
 import torch
@@ -165,7 +168,7 @@ class Predictor(object):
             logger.info("Infer time: {:.4f}s".format(time.time() - t0))
         return outputs, img_info
 
-    def visual(self, output, img_info, cls_conf=0.35):
+    def visual(self, output, img_info,cls_conf=0.35):
         ratio = img_info["ratio"]
         img = img_info["raw_img"]
         if output is None:
@@ -179,9 +182,21 @@ class Predictor(object):
 
         cls = output[:, 6]
         scores = output[:, 4] * output[:, 5]
+        
+        # We create detected_image_config.json
+        img_config = {"image_id":img_info['id'],
+                      "image_name": img_info['file_name'],
+                      "image_height":img_info['height'],
+                      "image_width": img_info['width'],
+                      "image_ratio":img_info['ratio'],
+                      "bounds":bboxes.tolist(),
+                      "classes":cls.tolist(),
+                      "classes_names":list(self.cls_names)
+                      }
+
 
         vis_res = vis(img, bboxes, scores, cls, cls_conf, self.cls_names)
-        return vis_res
+        return vis_res,img_config
 
 
 def image_demo(predictor, vis_folder, path, current_time, save_result):
@@ -192,7 +207,7 @@ def image_demo(predictor, vis_folder, path, current_time, save_result):
     files.sort()
     for image_name in files:
         outputs, img_info = predictor.inference(image_name)
-        result_image = predictor.visual(outputs[0], img_info, predictor.confthre)
+        result_image,img_config = predictor.visual(outputs[0], img_info, predictor.confthre)
         if save_result:
             save_folder = os.path.join(
                 vis_folder, time.strftime("%Y_%m_%d_%H_%M_%S", current_time)
@@ -200,7 +215,15 @@ def image_demo(predictor, vis_folder, path, current_time, save_result):
             os.makedirs(save_folder, exist_ok=True)
             save_file_name = os.path.join(save_folder, os.path.basename(image_name))
             logger.info("Saving detection result in {}".format(save_file_name))
+            #result_image = predictor.visual(outputs[0], img_info, predictor.confthre)
             cv2.imwrite(save_file_name, result_image)
+            save_config_json = os.path.join(save_folder, f"{os.path.basename(image_name)[:-4]}.json")
+            logger.info("Saving detection json config result in {}".format(save_config_json))
+            with open(save_config_json,"w") as f:
+                json.dump(img_config,f,indent = 4)
+            
+            
+            
         ch = cv2.waitKey(0)
         if ch == 27 or ch == ord("q") or ch == ord("Q"):
             break
