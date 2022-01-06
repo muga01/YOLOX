@@ -6,6 +6,7 @@ import argparse
 import os
 import time
 from loguru import logger
+import shutil
 
 # Added json import for the detected image info retrieval
 import json
@@ -27,7 +28,7 @@ def make_parser():
     parser.add_argument(
         "demo", default="image", help="demo type, eg. image, video and webcam"
     )
-    parser.add_argument("-expn", "--experiment-name", type=str, default=None)
+    parser.add_argument("-expn", "--experiment_name", type=str, default=None)
     parser.add_argument("-n", "--name", type=str, default=None, help="model name")
 
     parser.add_argument(
@@ -221,12 +222,23 @@ def image_demo(predictor, vis_folder, path, current_time, save_result):
             logger.info("Saving detection json config result in {}".format(save_config_json))
             with open(save_config_json,"w") as f:
                 json.dump(img_config,f,indent = 4)
+
+            # folder_name = {'image_path': save_file_name,
+            #                'json_path': save_config_json}
+            #
+            # save_here = "./media/detected.json"
+            #
+            #
+            # with open(save_here,'w') as f:
+            #     json.dump(folder_name,f,indent = 4)
+
             
             
             
-        ch = cv2.waitKey(0)
-        if ch == 27 or ch == ord("q") or ch == ord("Q"):
-            break
+        # ch = cv2.waitKey(0)
+        # if ch == 27 or ch == ord("q") or ch == ord("Q"):
+        #     break
+    return save_file_name,save_config_json
 
 
 def imageflow_demo(predictor, vis_folder, current_time, args):
@@ -260,16 +272,17 @@ def imageflow_demo(predictor, vis_folder, current_time, args):
             break
 
 
-def main(exp, args):
+def main_detector(exp, args):
     if not args.experiment_name:
         args.experiment_name = exp.exp_name
 
-    file_name = os.path.join(exp.output_dir, args.experiment_name)
+    # file_name = os.path.join(exp.output_dir, args.experiment_name)
+    file_name = os.path.join(exp.output_dir, "outputs")
     os.makedirs(file_name, exist_ok=True)
 
     vis_folder = None
     if args.save_result:
-        vis_folder = os.path.join(file_name, "vis_res")
+        vis_folder = os.path.join(file_name, "")
         os.makedirs(vis_folder, exist_ok=True)
 
     if args.trt:
@@ -327,13 +340,13 @@ def main(exp, args):
     )
     current_time = time.localtime()
     if args.demo == "image":
-        image_demo(predictor, vis_folder, args.path, current_time, args.save_result)
+        return image_demo(predictor, vis_folder, args.path, current_time, args.save_result)
     elif args.demo == "video" or args.demo == "webcam":
         imageflow_demo(predictor, vis_folder, current_time, args)
 
 
-if __name__ == "__main__":
-    args = make_parser().parse_args()
-    exp = get_exp(args.exp_file, args.name)
-
-    main(exp, args)
+# if __name__ == "__main__":
+#     args = make_parser().parse_args()
+#     exp = get_exp(args.exp_file, args.name)
+#
+#     main(exp, args)
